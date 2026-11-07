@@ -27,10 +27,9 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
         
-        /* 🛠️ 需求 1：精緻粗體標題樣式 */
         h1.main-title {
             font-size: 28px;
-            font-weight: 800; /* 極粗體 */
+            font-weight: 800;
             color: var(--primary-color);
             margin-top: 0;
             margin-bottom: 5px;
@@ -44,16 +43,17 @@
             margin-bottom: 25px;
         }
 
-        /* 🛠️ 需求 2：第一列年度結餘卡片 */
+        /* 🛠️ 優化：改用 flex-direction: column 讓金額強制排到下一行 */
         .balance-banner {
             background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
             color: white;
-            padding: 20px;
+            padding: 22px 25px;
             border-radius: 8px;
             margin-bottom: 30px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column; 
+            align-items: flex-start;
+            gap: 12px; 
             box-shadow: 0 4px 10px rgba(44, 62, 80, 0.15);
         }
         .balance-label {
@@ -69,8 +69,9 @@
             margin-right: 5px;
             font-size: 14px;
         }
+        /* 調整金額字體，與標題完美錯開 */
         .balance-amount {
-            font-size: 26px;
+            font-size: 32px;
             font-weight: 700;
             letter-spacing: 0.5px;
             color: #fff;
@@ -157,11 +158,10 @@
 <body>
 
 <div class="container">
-    <!-- 1. 標題與設計優化 -->
     <h1 class="main-title">摘星樓收支管理</h1>
     <div class="title-divider"></div>
     
-    <!-- 2. 年度結餘顯示列 -->
+    <!-- 年度結餘顯示列 -->
     <div class="balance-banner">
         <div class="balance-label">
             <span id="rocYearLabel">民國 -- 年</span>年度當前結餘
@@ -173,13 +173,11 @@
     
     <!-- 記帳表單 -->
     <div class="form-grid">
-        <!-- 交易日期 (預設當天) -->
         <div class="form-group">
             <label for="txDate">交易日期</label>
             <input type="date" id="txDate">
         </div>
 
-        <!-- 收支類型 -->
         <div class="form-group">
             <label for="txType">收支類型</label>
             <select id="txType" onchange="updateCategories(); handleLogicChange();">
@@ -188,15 +186,13 @@
             </select>
         </div>
 
-        <!-- 主要科目 -->
         <div class="form-group">
             <label for="mainCategory">主要科目</label>
-            <select id="mainCategory" onchange="handleLogicChange()">
+            <select id="mainCategory">
                 <!-- JS 動態插入 -->
             </select>
         </div>
 
-        <!-- 對應樓層 (2F 至 7F) -->
         <div class="form-group">
             <label for="floor">對應樓層</label>
             <select id="floor">
@@ -210,7 +206,6 @@
             </select>
         </div>
 
-        <!-- 繳交期數方案 -->
         <div class="form-group hidden-group" id="planGroup">
             <label for="paymentPlan">繳交期數方案</label>
             <select id="paymentPlan" onchange="handlePlanPrice()">
@@ -221,7 +216,6 @@
             </select>
         </div>
 
-        <!-- 金額 -->
         <div class="form-group">
             <label for="amount">金額</label>
             <input type="number" id="amount" placeholder="請輸入金額" min="0">
@@ -230,7 +224,6 @@
 
     <button onclick="addRecord()">➕ 新增收支紀錄</button>
 
-    <!-- 歷史紀錄列表 -->
     <div class="table-container">
         <h3 style="color: var(--primary-color);">📊 歷史收支明細</h3>
         <table>
@@ -251,68 +244,69 @@
 </div>
 
 <script>
-    // 嚴格依規範配置固定初始金額與科目
     let currentBalance = 120662.00;
     const incomeCategories = ["管理費", "其他"];
     const expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
 
     window.onload = function() {
-        // 預設當天西元日期
         const todayObj = new Date();
         const yyyy = todayObj.getFullYear();
         const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
         const dd = String(todayObj.getDate()).padStart(2, '0');
         document.getElementById('txDate').value = `${yyyy}-${mm}-${dd}`;
 
-        // 🛠️ 需求 2：計算並顯示當下的民國年份 (西元年 - 1911)
+        // 🛠️ 修正：補齊閉合括號，確保民國年份能正確初始化與渲染
         const rocYear = yyyy - 1911;
         document.getElementById('rocYearLabel').textContent = `民國 ${rocYear} 年`;
 
-        // 刷新結餘金額顯示
-        refreshBalanceDisplay();
-        
-        // 初始化選單
-        updateCategories();
-        handleLogicChange();
+        // 監聽日期變化，即時同步更新民國年標籤
+        document.getElementById('txDate').addEventListener('change', function() {
+            const dateVal = this.value;
+            if (dateVal) {
+                const year = parseInt(dateVal.split('-'), 10);
+                document.getElementById('rocYearLabel').textContent = `民國 ${year - 1911} 年`;
+            }
+        });
+
+        // 監聽主要科目變更
+        document.getElementById('mainCategory').addEventListener('change', handleLogicChange);
+
+        // 正確的初始化順序
+        updateCategories();     
+        handleLogicChange();    
+        updateBalanceDisplay(); 
     };
 
-    function refreshBalanceDisplay() {
-        // 🛠️ 需求 2：格式化千分號，固定小數點二位，附加新台幣字樣
-        const formatted = "NT$ " + currentBalance.toLocaleString('zh-TW', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-        document.getElementById('currentBalanceDisplay').textContent = formatted;
+    function updateBalanceDisplay() {
+        document.getElementById('currentBalanceDisplay').textContent = 
+            `NT$ ${currentBalance.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
     function updateCategories() {
         const txType = document.getElementById('txType').value;
-        const mainCategory = document.getElementById('mainCategory');
-        mainCategory.innerHTML = '';
-        
-        const list = (txType === '收入') ? incomeCategories : expenseCategories;
-        list.forEach(item => {
+        const mainCategorySelect = document.getElementById('mainCategory');
+        mainCategorySelect.innerHTML = '';
+
+        const categories = txType === '收入' ? incomeCategories : expenseCategories;
+        categories.forEach(cat => {
             const opt = document.createElement('option');
-            opt.value = item;
-            opt.textContent = item;
-            mainCategory.appendChild(opt);
+            opt.value = cat;
+            opt.textContent = cat;
+            mainCategorySelect.appendChild(opt);
         });
     }
 
     function handleLogicChange() {
         const txType = document.getElementById('txType').value;
         const mainCategory = document.getElementById('mainCategory').value;
-        
-        const floorSelect = document.getElementById('floor');
         const planGroup = document.getElementById('planGroup');
         const paymentPlan = document.getElementById('paymentPlan');
         const amountInput = document.getElementById('amount');
 
         if (txType === '收入' && mainCategory === '管理費') {
-            floorSelect.disabled = false;
-            planGroup.style.display = 'flex';
+            planGroup.classList.remove('hidden-group');
+            amountInput.disabled = true; 
+            handlePlanPrice(); 
         } else {
-            floorSelect.disabled = true;
-            floorSelect.value = '';
-            planGroup.style.display = 'none';
+            planGroup.classList.add('hidden-group');
             paymentPlan.value = '';
