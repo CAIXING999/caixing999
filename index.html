@@ -2,7 +2,6 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>摘星樓收支管理</title>
     <style>
         :root {
@@ -13,7 +12,7 @@
             --danger-color: #e74c3c;
         }
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
             padding: 20px;
@@ -33,7 +32,6 @@
             color: var(--primary-color);
             margin-top: 0;
             margin-bottom: 5px;
-            letter-spacing: 1px;
         }
         .title-divider {
             height: 4px;
@@ -66,7 +64,6 @@
         .balance-label {
             font-size: 15px;
             font-weight: 500;
-            opacity: 0.9;
         }
         .balance-label span {
             background-color: var(--secondary-color);
@@ -79,8 +76,6 @@
         .balance-amount {
             font-size: 30px;
             font-weight: 700;
-            letter-spacing: 0.5px;
-            color: #fff;
         }
         .form-grid {
             display: grid;
@@ -103,21 +98,17 @@
             border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 14px;
-            transition: all 0.3s;
             background-color: #fff;
+            box-sizing: border-radius;
         }
         input:focus, select:focus {
             border-color: var(--accent-color);
             outline: none;
-            box-shadow: 0 0 5px rgba(41, 128, 185, 0.3);
         }
         input:disabled, select:disabled {
             background-color: #e9ecef;
             cursor: not-allowed;
             color: #7f8c8d;
-        }
-        .hidden-group {
-            display: none;
         }
         .btn-add {
             background-color: var(--secondary-color);
@@ -128,9 +119,7 @@
             border-radius: 6px;
             cursor: pointer;
             font-weight: 700;
-            transition: background 0.3s;
             width: 100%;
-            box-shadow: 0 2px 5px rgba(24, 188, 156, 0.2);
         }
         .btn-add:hover {
             background-color: #128f76;
@@ -144,7 +133,6 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: 700;
-            transition: background 0.2s;
         }
         .btn-delete:hover {
             background-color: #c0392b;
@@ -181,20 +169,12 @@
 
     <div class="banner-grid">
         <div class="balance-banner">
-            <div class="balance-label">
-                <span>結轉</span>前年度結餘金額
-            </div>
-            <div class="balance-amount">
-                NT$ 120,662
-            </div>
+            <div class="balance-label"><span>結轉</span>前年度結餘金額</div>
+            <div class="balance-amount">NT$ 120,662</div>
         </div>
         <div class="balance-banner current">
-            <div class="balance-label">
-                <span>即時</span>當前結餘金額
-            </div>
-            <div class="balance-amount" id="currentBalanceDisplay">
-                NT$ 120,662
-            </div>
+            <div class="balance-label"><span>即時</span>當前結餘金額</div>
+            <div class="balance-amount" id="currentBalanceDisplay">NT$ 120,662</div>
         </div>
     </div>
 
@@ -207,18 +187,16 @@
         <div class="form-group">
             <label for="txType">收支類型</label>
             <select id="txType" onchange="updateCategories()">
-                <option value="收入" selected>收入</option>
+                <option value="收入">收入</option>
                 <option value="支出">支出</option>
             </select>
         </div>
         <div class="form-group">
             <label for="mainCategory">主要科目</label>
             <select id="mainCategory" onchange="handleLogicChange()">
-                <option value="管理費" selected>管理費</option>
-                <option value="其他">其他</option>
+                <!-- 由 JavaScript 動態生成 -->
             </select>
         </div>
-        <!-- 樓層群組 -->
         <div class="form-group" id="floorGroup">
             <label for="floor">對應樓層</label>
             <select id="floor">
@@ -231,7 +209,6 @@
                 <option value="7F">7 樓</option>
             </select>
         </div>
-        <!-- 繳交方案群組 -->
         <div class="form-group" id="planGroup">
             <label for="paymentPlan">繳交期數方案</label>
             <select id="paymentPlan" onchange="handlePlanPrice()">
@@ -264,52 +241,76 @@
                 </tr>
             </thead>
             <tbody id="recordTableBody">
+                <!-- 歷史紀錄渲染處 -->
             </tbody>
         </table>
     </div>
 </div>
 
 <script>
-const INITIAL_BALANCE = 120662;
-let currentBalance = INITIAL_BALANCE;
-let records = []; // 存放所有明細的陣列
+// 1. 固定常數與變額基礎
+var INITIAL_BALANCE = 120662;
+var currentBalance = INITIAL_BALANCE;
+var records = []; 
 
-const incomeCategories = ["管理費", "其他"];
-const expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
+var incomeCategories = ["管理費", "其他"];
+var expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
 
-// 初始化系統時間
+// 2. 初始化今日日期 (Windows 電腦標準規格)
 function initSystemDate() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    document.getElementById('txDate').value = `${yyyy}-${mm}-${dd}`;
+    var d = new Date();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    document.getElementById('txDate').value = yyyy + '-' + mm + '-' + dd;
 }
 
-// 動態更新主要科目清單
+// 3. 依據收支類型動態渲染科目選單
 function updateCategories() {
-    const txType = document.getElementById('txType').value;
-    const mainCategorySelect = document.getElementById('mainCategory');
+    var txType = document.getElementById('txType').value;
+    var mainCategorySelect = document.getElementById('mainCategory');
     mainCategorySelect.innerHTML = '';
     
-    const categories = txType === '收入' ? incomeCategories : expenseCategories;
-    categories.forEach(category => {
-        const opt = document.createElement('option');
-        opt.value = category;
-        opt.textContent = category;
+    var categories = (txType === '收入') ? incomeCategories : expenseCategories;
+    for (var i = 0; i < categories.length; i++) {
+        var opt = document.createElement('option');
+        opt.value = categories[i];
+        opt.textContent = categories[i];
         mainCategorySelect.appendChild(opt);
-    });
+    }
     
+    // 如果是網頁初始狀態，強制指定科目為「管理費」
+    if (txType === '收入') {
+        mainCategorySelect.value = '管理費';
+    }
+
     handleLogicChange();
 }
 
-// 控制「對應樓層」與「繳交期數方案」群組的隱藏與重設邏輯
+// 4. 重點邏輯：控制樓層、方案的顯示與隱藏（只有 收入 + 管理費 才准許顯示）
 function handleLogicChange() {
-    const txType = document.getElementById('txType').value;
-    const mainCategory = document.getElementById('mainCategory').value;
-    const floorGroup = document.getElementById('floorGroup');
-    const planGroup = document.getElementById('planGroup');
-    const amountInput = document.getElementById('amount');
+    var txType = document.getElementById('txType').value;
+    var mainCategory = document.getElementById('mainCategory').value;
+    var floorGroup = document.getElementById('floorGroup');
+    var planGroup = document.getElementById('planGroup');
+    var amountInput = document.getElementById('amount');
     
     if (txType === '收入' && mainCategory === '管理費') {
-        floorGroup.classList.remove('hidden-group');
+        floorGroup.style.display = 'flex';
+        planGroup.style.display = 'flex';
+    } else {
+        // 其餘狀態直接隱藏，且清空裡面的值不准選擇
+        floorGroup.style.display = 'none';
+        planGroup.style.display = 'none';
+        document.getElementById('floor').value = '';
+        document.getElementById('paymentPlan').value = '';
+        amountInput.value = '';
+        amountInput.disabled = false;
+    }
+}
+
+// 5. 方案自動帶入金額並鎖定輸入
+function handlePlanPrice() {
+    var planSelect = document.getElementById('paymentPlan');
+    var selectedOpt = planSelect.options[planSelect.selectedIndex];
+    var price = parseInt(selectedOpt.getAttribute('data-price') || '0', 10);
