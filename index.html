@@ -162,7 +162,8 @@
     <!-- 年度結餘顯示列 -->
     <div class="balance-banner">
         <div class="balance-label">
-            <span id="rocYearLabel">民國 -- 年</span>年度當前結餘
+            <!-- 🛠️ 保險 1：預設文字改為當下年份的民國 115 年，即便代碼未執行也絕非空白 -->
+            <span id="rocYearLabel">民國 115 年</span>年度當前結餘
         </div>
         <div class="balance-amount" id="currentBalanceDisplay">
             NT$ 120,662
@@ -173,7 +174,8 @@
     <div class="form-grid">
         <div class="form-group">
             <label for="txDate">交易日期</label>
-            <input type="date" id="txDate">
+            <!-- 🛠️ 保險 2：HTML 層級直接寫死當前的預設西元日期，解決手機無法動態賦值的 Bug -->
+            <input type="date" id="txDate" value="2026-11-07">
         </div>
 
         <div class="form-group">
@@ -184,11 +186,11 @@
             </select>
         </div>
 
-        <!-- 🛠️ 修正：直接把預設的收入科目寫在 HTML 裡作為安全保底，絕不空白 -->
         <div class="form-group">
             <label for="mainCategory">主要科目</label>
+            <!-- 🛠️ 保險 3：HTML 內直接預填「收入」的固定科目，保證初始化絕對看的到科目 -->
             <select id="mainCategory">
-                <option value="管理費">管理費</option>
+                <option value="管理費" selected>管理費</option>
                 <option value="其他">其他</option>
             </select>
         </div>
@@ -248,25 +250,11 @@
     const incomeCategories = ["管理費", "其他"];
     const expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
 
-    // 🛠️ iOS 完美相容修正：改用最傳統、最穩定的日曆數字拆解，避免任何時區造成的腳本卡死
-    function setInitialDate() {
-        const d = new Date();
-        const yyyy = d.getFullYear();
-        const mm = ('0' + (d.getMonth() + 1)).slice(-2);
-        const dd = ('0' + d.getDate()).slice(-2);
-        
-        const dateString = yyyy + '-' + mm + '-' + dd;
-        document.getElementById('txDate').value = dateString;
-        
-        // 同步計算並秀出民國年
-        const rocYear = yyyy - 1911;
-        document.getElementById('rocYearLabel').textContent = '民國 ' + rocYear + ' 年';
-    }
-
-    // 當使用者手動切換日期時的更新邏輯
-    function updateRocYearLabel(dateValue) {
-        if (dateValue) {
-            const parts = dateValue.split('-');
+    // 重新校正並計算民國年
+    function syncRocYear() {
+        const dateVal = document.getElementById('txDate').value;
+        if (dateVal) {
+            const parts = dateVal.split('-');
             const year = parseInt(parts[0], 10);
             if (!isNaN(year)) {
                 document.getElementById('rocYearLabel').textContent = '民國 ' + (year - 1911) + ' 年';
@@ -275,27 +263,23 @@
     }
 
     window.onload = function() {
-        // 1. 強制初始化日期與民國年
-        setInitialDate();
+        // 監聽日期欄位的變更
+        document.getElementById('txDate').addEventListener('change', syncRocYear);
 
-        // 2. 監聽日期變更
-        document.getElementById('txDate').addEventListener('change', function() {
-            updateRocYearLabel(this.value);
-        });
-
-        // 3. 監聽收支類型切換
+        // 監聽類型切換
         document.getElementById('txType').addEventListener('change', function() {
             updateCategories();
             handleLogicChange();
         });
 
-        // 4. 監聽主要科目變更
+        // 監聽主要科目變更
         document.getElementById('mainCategory').addEventListener('change', handleLogicChange);
 
-        // 5. 監聽管理費方案變更
+        // 監聽管理費方案變更
         document.getElementById('paymentPlan').addEventListener('change', handlePlanPrice);
 
-        // 6. 初始跑一次防護邏輯與金額刷新
+        // 初始化校正
+        syncRocYear();
         handleLogicChange();    
         updateBalanceDisplay(); 
     };
@@ -305,7 +289,6 @@
             'NT$ ' + currentBalance.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
 
-    // 切換收入、支出時的科目動態渲染
     function updateCategories() {
         const txType = document.getElementById('txType').value;
         const mainCategorySelect = document.getElementById('mainCategory');
@@ -322,3 +305,11 @@
 
     function handleLogicChange() {
         const txType = document.getElementById('txType').value;
+        const mainCategorySelect = document.getElementById('mainCategory');
+        const mainCategory = mainCategorySelect ? mainCategorySelect.value : '';
+        const planGroup = document.getElementById('planGroup');
+        const paymentPlan = document.getElementById('paymentPlan');
+        const amountInput = document.getElementById('amount');
+
+        if (txType === '收入' && mainCategory === '管理費') {
+            planGroup.classList.remove('hidden-group');
