@@ -43,20 +43,31 @@
             margin-bottom: 25px;
         }
 
+        /* 🛠️ 變更：改為雙卡片並列布局 */
+        .banner-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
         .balance-banner {
             background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
             color: white;
-            padding: 22px 25px;
+            padding: 20px;
             border-radius: 8px;
-            margin-bottom: 30px;
             display: flex;
             flex-direction: column; 
             align-items: flex-start;
-            gap: 12px; 
+            gap: 10px; 
             box-shadow: 0 4px 10px rgba(44, 62, 80, 0.15);
         }
+        /* 當前結餘卡片特別亮色突顯 */
+        .balance-banner.current {
+            background: linear-gradient(135deg, #2b3e50 0%, #1a252f 100%);
+            border-left: 5px solid var(--secondary-color);
+        }
         .balance-label {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 500;
             opacity: 0.9;
         }
@@ -66,10 +77,10 @@
             border-radius: 4px;
             font-weight: bold;
             margin-right: 5px;
-            font-size: 14px;
+            font-size: 13px;
         }
         .balance-amount {
-            font-size: 32px;
+            font-size: 30px;
             font-weight: 700;
             letter-spacing: 0.5px;
             color: #fff;
@@ -159,28 +170,39 @@
     <h1 class="main-title">摘星樓收支管理</h1>
     <div class="title-divider"></div>
     
-    <!-- 年度結餘顯示列 -->
-    <div class="balance-banner">
-        <div class="balance-label">
-            <!-- 🛠️ 保險 1：預設文字改為當下年份的民國 115 年，即便代碼未執行也絕非空白 -->
-            <span id="rocYearLabel">民國 115 年</span>年度當前結餘
+    <!-- 🛠️ 變更：前年度結餘與當前結餘看板 -->
+    <div class="banner-grid">
+        <!-- 卡片 1：前年度結餘金額 -->
+        <div class="balance-banner">
+            <div class="balance-label">
+                <span id="rocYearLabel">民國 -- 年</span>前年度結餘金額
+            </div>
+            <div class="balance-amount">
+                NT$ 120,662
+            </div>
         </div>
-        <div class="balance-amount" id="currentBalanceDisplay">
-            NT$ 120,662
+        <!-- 卡片 2：新增當前結餘（隨收支即時增減變動） -->
+        <div class="balance-banner current">
+            <div class="balance-label">
+                <span>即時</span>當前結餘金額
+            </div>
+            <div class="balance-amount" id="currentBalanceDisplay">
+                NT$ 120,662
+            </div>
         </div>
     </div>
     
     <!-- 記帳表單 -->
     <div class="form-grid">
+        <!-- 🛠️ 修正 3：採用最強制的 HTML 內聯監聽 onchange -->
         <div class="form-group">
             <label for="txDate">交易日期</label>
-            <!-- 🛠️ 保險 2：HTML 層級直接寫死當前的預設西元日期，解決手機無法動態賦值的 Bug -->
-            <input type="date" id="txDate" value="2026-11-07">
+            <input type="date" id="txDate" onchange="syncRocYear()">
         </div>
 
         <div class="form-group">
             <label for="txType">收支類型</label>
-            <select id="txType">
+            <select id="txType" onchange="updateCategories(); handleLogicChange();">
                 <option value="收入" selected>收入</option>
                 <option value="支出">支出</option>
             </select>
@@ -188,8 +210,7 @@
 
         <div class="form-group">
             <label for="mainCategory">主要科目</label>
-            <!-- 🛠️ 保險 3：HTML 內直接預填「收入」的固定科目，保證初始化絕對看的到科目 -->
-            <select id="mainCategory">
+            <select id="mainCategory" onchange="handleLogicChange()">
                 <option value="管理費" selected>管理費</option>
                 <option value="其他">其他</option>
             </select>
@@ -210,7 +231,7 @@
 
         <div class="form-group hidden-group" id="planGroup">
             <label for="paymentPlan">繳交期數方案</label>
-            <select id="paymentPlan">
+            <select id="paymentPlan" onchange="handlePlanPrice()">
                 <option value="" data-price="0">-- 請選擇方案 --</option>
                 <option value="雙月繳" data-price="3000">雙月繳 ($3,000)</option>
                 <option value="半年繳" data-price="9000">半年繳 ($9,000)</option>
@@ -246,11 +267,23 @@
 </div>
 
 <script>
+    // 固定初始值與科目清單
     let currentBalance = 120662;
     const incomeCategories = ["管理費", "其他"];
     const expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
 
-    // 重新校正並計算民國年
+    // 🛠️ 修正 1：交易日期強制自動抓取手機當前最精準的系統日期
+    function initSystemDate() {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = ('0' + (d.getMonth() + 1)).slice(-2);
+        const dd = ('0' + d.getDate()).slice(-2);
+        
+        document.getElementById('txDate').value = yyyy + '-' + mm + '-' + dd;
+        document.getElementById('rocYearLabel').textContent = '民國 ' + (yyyy - 1911) + ' 年';
+    }
+
+    // 根據手動變更的日期重新對齊民國年
     function syncRocYear() {
         const dateVal = document.getElementById('txDate').value;
         if (dateVal) {
@@ -262,54 +295,20 @@
         }
     }
 
-    window.onload = function() {
-        // 監聽日期欄位的變更
-        document.getElementById('txDate').addEventListener('change', syncRocYear);
-
-        // 監聽類型切換
-        document.getElementById('txType').addEventListener('change', function() {
-            updateCategories();
-            handleLogicChange();
-        });
-
-        // 監聽主要科目變更
-        document.getElementById('mainCategory').addEventListener('change', handleLogicChange);
-
-        // 監聽管理費方案變更
-        document.getElementById('paymentPlan').addEventListener('change', handlePlanPrice);
-
-        // 初始化校正
-        syncRocYear();
-        handleLogicChange();    
-        updateBalanceDisplay(); 
-    };
-
-    function updateBalanceDisplay() {
-        document.getElementById('currentBalanceDisplay').textContent = 
-            'NT$ ' + currentBalance.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    }
-
+    // 🛠️ 修正 2：用最精簡直接的流程，確保支出科目一定渲染
     function updateCategories() {
         const txType = document.getElementById('txType').value;
         const mainCategorySelect = document.getElementById('mainCategory');
         mainCategorySelect.innerHTML = '';
 
         const categories = txType === '收入' ? incomeCategories : expenseCategories;
-        categories.forEach(function(cat) {
+        for (let i = 0; i < categories.length; i++) {
             const opt = document.createElement('option');
-            opt.value = cat;
-            opt.textContent = cat;
+            opt.value = categories[i];
+            opt.textContent = categories[i];
             mainCategorySelect.appendChild(opt);
-        });
+        }
     }
 
-    function handleLogicChange() {
-        const txType = document.getElementById('txType').value;
-        const mainCategorySelect = document.getElementById('mainCategory');
-        const mainCategory = mainCategorySelect ? mainCategorySelect.value : '';
-        const planGroup = document.getElementById('planGroup');
-        const paymentPlan = document.getElementById('paymentPlan');
-        const amountInput = document.getElementById('amount');
-
-        if (txType === '收入' && mainCategory === '管理費') {
-            planGroup.classList.remove('hidden-group');
+    function updateBalanceDisplay() {
+        document.getElementById('currentBalanceDisplay').textContent =
