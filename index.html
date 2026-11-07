@@ -10,6 +10,7 @@
             --secondary-color: #18bc9c;
             --bg-color: #f8f9fa;
             --accent-color: #2980b9;
+            --danger-color: #e74c3c;
         }
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
@@ -118,7 +119,7 @@
         .hidden-group {
             display: none;
         }
-        button {
+        .btn-add {
             background-color: var(--secondary-color);
             color: white;
             border: none;
@@ -131,8 +132,22 @@
             width: 100%;
             box-shadow: 0 2px 5px rgba(24, 188, 156, 0.2);
         }
-        button:hover {
+        .btn-add:hover {
             background-color: #128f76;
+        }
+        .btn-delete {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+        .btn-delete:hover {
+            background-color: #c0392b;
         }
         .table-container {
             margin-top: 35px;
@@ -203,7 +218,7 @@
                 <option value="其他">其他</option>
             </select>
         </div>
-        <!-- 樓層群組：僅在 收入 + 管理費 時顯示 -->
+        <!-- 樓層群組 -->
         <div class="form-group" id="floorGroup">
             <label for="floor">對應樓層</label>
             <select id="floor">
@@ -216,7 +231,7 @@
                 <option value="7F">7 樓</option>
             </select>
         </div>
-        <!-- 繳交方案群組：僅在 收入 + 管理費 時顯示 -->
+        <!-- 繳交方案群組 -->
         <div class="form-group" id="planGroup">
             <label for="paymentPlan">繳交期數方案</label>
             <select id="paymentPlan" onchange="handlePlanPrice()">
@@ -232,7 +247,7 @@
         </div>
     </div>
 
-    <button onclick="addRecord()">➕ 新增收支紀錄</button>
+    <button class="btn-add" onclick="addRecord()">➕ 新增收支紀錄</button>
 
     <div class="table-container">
         <h3 style="color: var(--primary-color);">📊 歷史收支明細</h3>
@@ -245,6 +260,7 @@
                     <th>樓層</th>
                     <th>配置方案</th>
                     <th>金額</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody id="recordTableBody">
@@ -254,11 +270,14 @@
 </div>
 
 <script>
-let currentBalance = 120662;
+const INITIAL_BALANCE = 120662;
+let currentBalance = INITIAL_BALANCE;
+let records = []; // 存放所有明細的陣列
+
 const incomeCategories = ["管理費", "其他"];
 const expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
 
-// 設定 Windows 電腦相容的今日日期預設值
+// 初始化系統時間
 function initSystemDate() {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -294,18 +313,3 @@ function handleLogicChange() {
     
     if (txType === '收入' && mainCategory === '管理費') {
         floorGroup.classList.remove('hidden-group');
-        planGroup.classList.remove('hidden-group');
-    } else {
-        // 其餘選項一律隱藏且不可選，並清空內含值
-        floorGroup.classList.add('hidden-group');
-        planGroup.classList.add('hidden-group');
-        document.getElementById('floor').value = '';
-        document.getElementById('paymentPlan').value = '';
-        amountInput.disabled = false;
-    }
-}
-
-// 根據電腦網頁選擇之方案填入並鎖定金額
-function handlePlanPrice() {
-    const planSelect = document.getElementById('paymentPlan');
-    const selectedOpt = planSelect.options[planSelect.selectedIndex];
