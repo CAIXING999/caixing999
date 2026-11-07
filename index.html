@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>摘星樓費用收支管理系統</title>
+    <title>摘星樓收支管理</title>
     <style>
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #18bc9c;
             --bg-color: #f8f9fa;
+            --accent-color: #2980b9;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
             background-color: var(--bg-color);
             margin: 0;
             padding: 20px;
@@ -23,14 +24,58 @@
             background: white;
             padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
-        h2 {
+        
+        /* 🛠️ 需求 1：精緻粗體標題樣式 */
+        h1.main-title {
+            font-size: 28px;
+            font-weight: 800; /* 極粗體 */
             color: var(--primary-color);
-            border-bottom: 2px solid var(--secondary-color);
-            padding-bottom: 10px;
             margin-top: 0;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
         }
+        .title-divider {
+            height: 4px;
+            width: 80px;
+            background-color: var(--secondary-color);
+            border-radius: 2px;
+            margin-bottom: 25px;
+        }
+
+        /* 🛠️ 需求 2：第一列年度結餘卡片 */
+        .balance-banner {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(44, 62, 80, 0.15);
+        }
+        .balance-label {
+            font-size: 16px;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+        .balance-label span {
+            background-color: var(--secondary-color);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+        .balance-amount {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #fff;
+        }
+
         .form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -42,26 +87,28 @@
             flex-direction: column;
         }
         label {
-            font-weight: bold;
+            font-weight: 700;
             margin-bottom: 8px;
-            color: #555;
+            color: #444;
+            font-size: 14px;
         }
         input, select {
-            padding: 10px;
+            padding: 11px;
             border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 14px;
             transition: all 0.3s;
+            background-color: #fff;
         }
         input:focus, select:focus {
-            border-color: var(--secondary-color);
+            border-color: var(--accent-color);
             outline: none;
-            box-shadow: 0 0 5px rgba(24, 188, 156, 0.3);
+            box-shadow: 0 0 5px rgba(41, 128, 185, 0.3);
         }
         input:disabled, select:disabled {
             background-color: #e9ecef;
             cursor: not-allowed;
-            color: #6c757d;
+            color: #7f8c8d;
         }
         .hidden-group {
             display: none;
@@ -70,19 +117,20 @@
             background-color: var(--secondary-color);
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 13px 20px;
             font-size: 16px;
             border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 700;
             transition: background 0.3s;
             width: 100%;
+            box-shadow: 0 2px 5px rgba(24, 188, 156, 0.2);
         }
         button:hover {
             background-color: #128f76;
         }
         .table-container {
-            margin-top: 30px;
+            margin-top: 35px;
             overflow-x: auto;
         }
         table {
@@ -91,33 +139,47 @@
             margin-top: 10px;
         }
         th, td {
-            padding: 12px;
+            padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
         }
         th {
-            background-color: var(--primary-color);
-            color: white;
+            background-color: #f1f5f9;
+            color: var(--primary-color);
+            font-weight: 700;
         }
         tr:hover {
-            background-color: #f1f1f1;
+            background-color: #f8fafc;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🌟 摘星樓費用收支管理系統</h2>
+    <!-- 1. 標題與設計優化 -->
+    <h1 class="main-title">摘星樓收支管理</h1>
+    <div class="title-divider"></div>
+    
+    <!-- 2. 年度結餘顯示列 -->
+    <div class="balance-banner">
+        <div class="balance-label">
+            <span id="rocYearLabel">民國 -- 年</span>年度當前結餘
+        </div>
+        <div class="balance-amount" id="currentBalanceDisplay">
+            NT$ 120,662.00
+        </div>
+    </div>
     
     <!-- 記帳表單 -->
     <div class="form-grid">
-        <!-- 1. 交易日期 (預設當天) -->
+        <!-- 交易日期 (預設當天) -->
         <div class="form-group">
             <label for="txDate">交易日期</label>
             <input type="date" id="txDate">
         </div>
 
-        <!-- 2. 收支類型 (預設收入) -->
+        <!-- 收支類型 -->
         <div class="form-group">
             <label for="txType">收支類型</label>
             <select id="txType" onchange="updateCategories(); handleLogicChange();">
@@ -126,11 +188,11 @@
             </select>
         </div>
 
-        <!-- 主要科目 (隨收支類型動態改變選項) -->
+        <!-- 主要科目 -->
         <div class="form-group">
             <label for="mainCategory">主要科目</label>
             <select id="mainCategory" onchange="handleLogicChange()">
-                <!-- JS 動態帶入 -->
+                <!-- JS 動態插入 -->
             </select>
         </div>
 
@@ -170,7 +232,7 @@
 
     <!-- 歷史紀錄列表 -->
     <div class="table-container">
-        <h3>📊 歷史收支明細</h3>
+        <h3 style="color: var(--primary-color);">📊 歷史收支明細</h3>
         <table>
             <thead>
                 <tr>
@@ -189,35 +251,46 @@
 </div>
 
 <script>
-    // 收支項目的常數定義
+    // 嚴格依規範配置固定初始金額與科目
+    let currentBalance = 120662.00;
     const incomeCategories = ["管理費", "其他"];
-    const expenseCategories = [
-        "電梯保養費", 
-        "清潔費", 
-        "公設電費", 
-        "電梯代辦檢驗及證照費", 
-        "消防申報費", 
-        "其他"
-    ];
+    const expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
 
     window.onload = function() {
-        // 預設今天日期
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('txDate').value = today;
+        // 預設當天西元日期
+        const todayObj = new Date();
+        const yyyy = todayObj.getFullYear();
+        const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(todayObj.getDate()).padStart(2, '0');
+        document.getElementById('txDate').value = `${yyyy}-${mm}-${dd}`;
 
-        // 初始化科目與介面邏輯
+        // 🛠️ 需求 2：計算並顯示當下的民國年份 (西元年 - 1911)
+        const rocYear = yyyy - 1911;
+        document.getElementById('rocYearLabel').textContent = `民國 ${rocYear} 年`;
+
+        // 刷新結餘金額顯示
+        refreshBalanceDisplay();
+        
+        // 初始化選單
         updateCategories();
         handleLogicChange();
     };
 
-    // 依據「收入/支出」更新主要科目的下拉選單
+    function refreshBalanceDisplay() {
+        // 🛠️ 需求 2：格式化千分號，固定小數點二位，附加新台幣字樣
+        const formatted = "NT$ " + currentBalance.toLocaleString('zh-TW', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        document.getElementById('currentBalanceDisplay').textContent = formatted;
+    }
+
     function updateCategories() {
         const txType = document.getElementById('txType').value;
         const mainCategory = document.getElementById('mainCategory');
-        
         mainCategory.innerHTML = '';
-        const list = (txType === '收入') ? incomeCategories : expenseCategories;
         
+        const list = (txType === '收入') ? incomeCategories : expenseCategories;
         list.forEach(item => {
             const opt = document.createElement('option');
             opt.value = item;
@@ -226,7 +299,6 @@
         });
     }
 
-    // 連動防呆邏輯
     function handleLogicChange() {
         const txType = document.getElementById('txType').value;
         const mainCategory = document.getElementById('mainCategory').value;
@@ -238,66 +310,9 @@
 
         if (txType === '收入' && mainCategory === '管理費') {
             floorSelect.disabled = false;
-            planGroup.style.style.display = 'flex';
+            planGroup.style.display = 'flex';
         } else {
             floorSelect.disabled = true;
             floorSelect.value = '';
             planGroup.style.display = 'none';
             paymentPlan.value = '';
-            amountInput.readOnly = false;
-        }
-    }
-
-    // 選定方案後，金額嚴格依 2個月 3000 元等比例精準帶入，不打折
-    function handlePlanPrice() {
-        const paymentPlan = document.getElementById('paymentPlan');
-        const amountInput = document.getElementById('amount');
-        
-        const selectedOption = paymentPlan.options[paymentPlan.selectedIndex];
-        const price = selectedOption.getAttribute('data-price');
-
-        if (price && price !== "0") {
-            amountInput.value = price;
-            amountInput.readOnly = true; 
-        } else {
-            amountInput.value = '';
-            amountInput.readOnly = false;
-        }
-    }
-
-    function addRecord() {
-        const date = document.getElementById('txDate').value;
-        const type = document.getElementById('txType').value;
-        const category = document.getElementById('mainCategory').value;
-        const floor = document.getElementById('floor').value || '無';
-        const plan = document.getElementById('paymentPlan').value || '無';
-        const amount = document.getElementById('amount').value;
-
-        if (!amount) {
-            alert('請填寫金額！');
-            return;
-        }
-
-        const tbody = document.getElementById('recordTableBody');
-        const row = document.createElement('tr');
-
-        row.innerHTML = `
-            <td>${date}</td>
-            <td style="color: ${type === '收入' ? '#18bc9c' : '#e74c3c'}; font-weight:bold;">${type}</td>
-            <td>${category}</td>
-            <td>${floor}</td>
-            <td>${plan}</td>
-            <td>$${Number(amount).toLocaleString()}</td>
-        `;
-
-        tbody.insertBefore(row, tbody.firstChild);
-
-        document.getElementById('paymentPlan').value = '';
-        document.getElementById('amount').value = '';
-        document.getElementById('amount').readOnly = false;
-        handleLogicChange();
-    }
-</script>
-
-</body>
-</html>
