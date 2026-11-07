@@ -164,7 +164,6 @@
         <div class="balance-label">
             <span id="rocYearLabel">民國 -- 年</span>年度當前結餘
         </div>
-        <!-- 🛠️ 修正：移除預設帶有小數點的文字 -->
         <div class="balance-amount" id="currentBalanceDisplay">
             NT$ 120,662
         </div>
@@ -177,7 +176,6 @@
             <input type="date" id="txDate">
         </div>
 
-        <!-- 🛠️ 修正：完全移除內聯 onchange，交給 JS 核心監聽，避免連動失效 -->
         <div class="form-group">
             <label for="txType">收支類型</label>
             <select id="txType">
@@ -186,10 +184,12 @@
             </select>
         </div>
 
+        <!-- 🛠️ 修正：直接把預設的收入科目寫在 HTML 裡作為安全保底，絕不空白 -->
         <div class="form-group">
             <label for="mainCategory">主要科目</label>
             <select id="mainCategory">
-                <!-- JS 動態插入 -->
+                <option value="管理費">管理費</option>
+                <option value="其他">其他</option>
             </select>
         </div>
 
@@ -206,7 +206,6 @@
             </select>
         </div>
 
-        <!-- 🛠️ 修正：移除內聯 onchange -->
         <div class="form-group hidden-group" id="planGroup">
             <label for="paymentPlan">繳交期數方案</label>
             <select id="paymentPlan">
@@ -245,74 +244,75 @@
 </div>
 
 <script>
-    // 初始金額（不含小數點）
     let currentBalance = 120662;
     const incomeCategories = ["管理費", "其他"];
     const expenseCategories = ["電梯保養費", "清潔費", "公設電費", "電梯代辦檢驗及證照費", "消防申報費", "其他"];
 
-    // 手機相容性優化：完美獲取當前本地 yyyy-mm-dd
-    function getLocalDateString() {
-        const now = new Date();
-        const offset = now.getTimezoneOffset();
-        const localDate = new Date(now.getTime() - (offset * 60 * 1000));
-        return localDate.toISOString().split('T')[0];
+    // 🛠️ iOS 完美相容修正：改用最傳統、最穩定的日曆數字拆解，避免任何時區造成的腳本卡死
+    function setInitialDate() {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = ('0' + (d.getMonth() + 1)).slice(-2);
+        const dd = ('0' + d.getDate()).slice(-2);
+        
+        const dateString = yyyy + '-' + mm + '-' + dd;
+        document.getElementById('txDate').value = dateString;
+        
+        // 同步計算並秀出民國年
+        const rocYear = yyyy - 1911;
+        document.getElementById('rocYearLabel').textContent = '民國 ' + rocYear + ' 年';
     }
 
-    // 根據日期字串更新民國年標籤
+    // 當使用者手動切換日期時的更新邏輯
     function updateRocYearLabel(dateValue) {
-        let year;
         if (dateValue) {
-            year = parseInt(dateValue.split('-'), 10);
-        } else {
-            year = new Date().getFullYear();
+            const parts = dateValue.split('-');
+            const year = parseInt(parts[0], 10);
+            if (!isNaN(year)) {
+                document.getElementById('rocYearLabel').textContent = '民國 ' + (year - 1911) + ' 年';
+            }
         }
-        const rocYear = year - 1911;
-        document.getElementById('rocYearLabel').textContent = `民國 ${rocYear} 年`;
     }
 
     window.onload = function() {
-        const todayStr = getLocalDateString();
-        document.getElementById('txDate').value = todayStr;
+        // 1. 強制初始化日期與民國年
+        setInitialDate();
 
-        // 初始化民國年顯示
-        updateRocYearLabel(todayStr);
-
-        // 監聽交易日期變更
+        // 2. 監聽日期變更
         document.getElementById('txDate').addEventListener('change', function() {
             updateRocYearLabel(this.value);
         });
 
-        // 🛠️ 修正核心：用 JS 強制且安全地監聽「收支類型」切換，徹底杜絕空白
+        // 3. 監聽收支類型切換
         document.getElementById('txType').addEventListener('change', function() {
             updateCategories();
             handleLogicChange();
         });
 
-        // 監聽主要科目變更
+        // 4. 監聽主要科目變更
         document.getElementById('mainCategory').addEventListener('change', handleLogicChange);
 
-        // 監聽繳交期數方案變更
+        // 5. 監聽管理費方案變更
         document.getElementById('paymentPlan').addEventListener('change', handlePlanPrice);
 
-        // 執行初始頁面渲染
-        updateCategories();     
+        // 6. 初始跑一次防護邏輯與金額刷新
         handleLogicChange();    
         updateBalanceDisplay(); 
     };
 
-    // 🛠️ 修正：將數字格式化的小數點最大與最小位數都設定為 0，直接呈現整數
     function updateBalanceDisplay() {
         document.getElementById('currentBalanceDisplay').textContent = 
-            `NT$ ${currentBalance.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            'NT$ ' + currentBalance.toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
 
+    // 切換收入、支出時的科目動態渲染
     function updateCategories() {
         const txType = document.getElementById('txType').value;
         const mainCategorySelect = document.getElementById('mainCategory');
         mainCategorySelect.innerHTML = '';
 
         const categories = txType === '收入' ? incomeCategories : expenseCategories;
-        categories.forEach(cat => {
+        categories.forEach(function(cat) {
             const opt = document.createElement('option');
             opt.value = cat;
             opt.textContent = cat;
