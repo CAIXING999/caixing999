@@ -2,248 +2,139 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>摘星樓收支管理手帳</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>大樓收支管理手帳</title>
+    
+    <!-- iPhone PWA 全螢幕與設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="大樓收支手帳">
+    
+    <!-- PWA 桌面圖示 (使用 Base64 內聯圖示，免去額外上傳圖片的麻煩) -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://w3.org' viewBox='0 0 100 100' width='180' height='180'><rect width='100' height='100' rx='20' fill='%234F46E5'/><text x='50' y='60' font-family='Arial, sans-serif' font-size='40' fill='white' text-anchor='middle'>🏢</text></svg>">
+
+    <!-- Tailwind CSS 樣式庫 -->
+    <script src="https://jsdelivr.net"></script>
     <style>
-        :root {
-            --bg-color: #000000;
-            --card-bg: #1c1c1e;
-            --input-bg: #ffffff;
-            --text-color: #ffffff;
-            --text-muted: #8e8e93;
-            --primary-blue: #007aff;
-            --border-radius: 12px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 16px;
-            max-width: 500px;
-            margin: 0 auto;
-            padding-bottom: 40px;
-        }
-
-        header {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            padding: 20px 0;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            border-radius: var(--border-radius);
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-
-        .card-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 12px;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            background-color: var(--input-bg);
-            color: #000000;
-            font-size: 16px;
-            outline: none;
-        }
-
-        select {
-            appearance: none;
-            -webkit-appearance: none;
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://w3.org' width='10' height='10' viewBox='0 0 10 10'><path d='M0 3l5 5 5-5z' fill='%23007aff'/></svg>");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 12px;
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 14px;
-            border-radius: 8px;
-            border: none;
-            background-color: var(--primary-blue);
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 8px;
-            transition: opacity 0.2s;
-        }
-
-        .btn-submit:active {
-            opacity: 0.8;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            font-size: 16px;
-            border-bottom: 1px solid #2c2c2e;
-        }
-
-        .stat-row:last-child {
-            border-bottom: none;
-            font-weight: bold;
-            font-size: 18px;
-            margin-top: 4px;
-        }
-
-        .ledger-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #2c2c2e;
-        }
-
-        .ledger-info {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .ledger-date {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        .ledger-meta {
-            font-size: 14px;
-        }
-
-        .ledger-memo {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        .ledger-amount-action {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .amount-in { color: #4cd964; }
-        .amount-out { color: #ff3b30; }
-
-        .btn-delete {
-            background: none;
-            border: none;
-            color: #ff3b30;
-            font-size: 14px;
-            cursor: pointer;
-            padding: 4px 8px;
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-800 pb-12">
 
-    <header>
-        💰 摘星樓收支管理手帳
+    <!-- 頂部導覽列 -->
+    <header class="bg-indigo-600 text-white pt-8 pb-4 px-4 sticky top-0 shadow-md z-10">
+        <h1 class="text-xl font-bold text-center">🏢 大樓收支管理系統</h1>
     </header>
 
-    <!-- 新增紀錄 -->
-    <div class="card">
-        <div class="card-title">新增紀錄</div>
-        <form id="recordForm">
-            <div class="form-group">
-                <select id="typeSelect">
-                    <option value="支出">支出</option>
-                    <option value="收入">收入</option>
-                </select>
+    <main class="max-w-md mx-auto p-4 space-y-6">
+        
+        <!-- 財務統計看板 -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">本月財務總覽</h2>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-green-50 p-3 rounded-xl">
+                    <p class="text-xs text-green-600 font-medium">總收入</p>
+                    <p id="total-income" class="text-lg font-bold text-green-700 mt-1">$0</p>
+                </div>
+                <div class="bg-red-50 p-3 rounded-xl">
+                    <p class="text-xs text-red-600 font-medium">總支出</p>
+                    <p id="total-expense" class="text-lg font-bold text-red-700 mt-1">$0</p>
+                </div>
+                <div class="bg-indigo-50 p-3 rounded-xl">
+                    <p class="text-xs text-indigo-600 font-medium">本期結存</p>
+                    <p id="balance" class="text-lg font-bold text-indigo-700 mt-1">$0</p>
+                </div>
             </div>
-            <div class="form-group">
-                <input type="date" id="dateInput" required>
-            </div>
-            <div class="form-group">
-                <input type="number" id="amountInput" placeholder="金額" required min="1">
-            </div>
-            <div class="form-group">
-                <select id="categorySelect">
-                    <!-- 動態載入 -->
-                </select>
-            </div>
-            <div class="form-group">
-                <input type="text" id="memoInput" placeholder="備註">
-            </div>
-            <button type="submit" class="btn-submit">儲存</button>
-        </form>
-    </div>
+        </section>
 
-    <!-- 搜尋 -->
-    <div class="card">
-        <div class="card-title">搜尋</div>
-        <input type="text" id="searchInput" placeholder="輸入關鍵字">
-    </div>
+        <!-- 新增紀錄表單 -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <h2 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <span>➕</span> 新增收支紀錄
+            </h2>
+            
+            <form id="tracker-form" class="space-y-4">
+                <!-- 收支類型切換 -->
+                <div class="flex bg-gray-100 p-1 rounded-xl">
+                    <button type="button" id="btn-income" class="flex-1 py-2 text-sm font-medium rounded-lg bg-white text-indigo-600 shadow-xs transition-all">收入</button>
+                    <button type="button" id="btn-expense" class="flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all">支出</button>
+                </div>
 
-    <!-- 歷史流水帳 -->
-    <div class="card">
-        <div class="card-title">歷史明細</div>
-        <div id="ledgerList">
-            <!-- 歷史紀錄將顯示在此 -->
-        </div>
-    </div>
+                <!-- 分類選擇 -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">項目分類</label>
+                    <select id="category" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500" required></select>
+                </div>
 
-    <!-- 統計 -->
-    <div class="card">
-        <div class="card-title">統計</div>
-        <div class="stat-row">今日：<span id="statToday">NT$ 0</span></div>
-        <div class="stat-row">本週：<span id="statWeekly">NT$ 0</span></div>
-        <div class="stat-row">本月：<span id="statMonthly">NT$ 0</span></div>
-        <div class="stat-row">今年：<span id="statYearly">NT$ 0</span></div>
-        <div class="stat-row" style="color: #ffcc00;">年度結餘：<span id="statTotalBalance">NT$ 120,662</span></div>
-    </div>
+                <!-- 金額 -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">金額 (TWD)</label>
+                    <input type="number" id="amount" inputmode="numeric" placeholder="請輸入金額" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500" required>
+                </div>
+
+                <!-- 備註說明 -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">摘要備註 (選填)</label>
+                    <input type="text" id="remark" placeholder="例：3樓張小姐管理費、電梯維修" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- 儲存按鈕 -->
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl text-sm transition-colors shadow-xs">
+                    儲存紀錄
+                </button>
+            </form>
+        </section>
+
+        <!-- 分類統計比例 -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <h2 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <span>📊</span> 分類金額統計
+            </h2>
+            <div id="category-stats" class="space-y-3 pt-2">
+                <!-- 統計條動態插入 -->
+            </div>
+        </section>
+
+        <!-- 歷史紀錄列表 -->
+        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <span>📜</span> 歷史明細明細
+                </h2>
+                <button id="btn-export" type="button" class="text-xs text-indigo-600 font-medium hover:underline">匯出明細</button>
+            </div>
+            
+            <div id="record-list" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                <!-- 紀錄列表動態插入 -->
+            </div>
+        </section>
+    </main>
 
     <script>
-        const INITIAL_BALANCE = 120662;
-        const incomeCategories = ["管理費", "其他"];
-        const expenseCategories = ["清潔費", "電梯保養費", "公設電費", "消防申報費", "電梯代辦檢查及證照費", "其他"];
+        // 核心資料庫配置
+        const categories = {
+            income: ['管理費', '其他'],
+            expense: ['公設電費', '電梯保養費', '清潔費', '電梯代辦費', '消防申報費', '其他']
+        };
 
-        let records = JSON.parse(localStorage.getItem('zhaxinglou_records')) || [];
+        let currentType = 'income'; // 預設為收入
+        let records = JSON.parse(localStorage.getItem('building_records')) || [];
 
-        const typeSelect = document.getElementById('typeSelect');
-        const categorySelect = document.getElementById('categorySelect');
-        const dateInput = document.getElementById('dateInput');
-        const recordForm = document.getElementById('recordForm');
-        const searchInput = document.getElementById('searchInput');
+        // DOM 節點
+        const btnIncome = document.getElementById('btn-income');
+        const btnExpense = document.getElementById('btn-expense');
+        const categorySelect = document.getElementById('category');
+        const trackerForm = document.getElementById('tracker-form');
+        const recordList = document.getElementById('record-list');
+        const btnExport = document.getElementById('btn-export');
 
-        // 初始化日期為當天
-        function initDate() {
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            dateInput.value = `${yyyy}-${mm}-${dd}`;
-        }
-
-        // 更新分類選單
-        function updateCategories() {
+        // 初始化與類別切換
+        function updateCategoryOptions() {
             categorySelect.innerHTML = '';
-            const categories = typeSelect.value === '收入' ? incomeCategories : expenseCategories;
-            categories.forEach(cat => {
+            categories[currentType].forEach(cat => {
                 const opt = document.createElement('option');
                 opt.value = cat;
                 opt.textContent = cat;
@@ -251,68 +142,65 @@
             });
         }
 
-        typeSelect.addEventListener('change', updateCategories);
-
-        // 儲存紀錄
-        recordForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const record = {
-                id: Date.now(),
-                type: typeSelect.value,
-                date: dateInput.value,
-                amount: parseInt(document.getElementById('amountInput').value),
-                category: categorySelect.value,
-                memo: document.getElementById('memoInput').value.trim()
-            };
-
-            records.push(record);
-            saveAndRender();
-            
-            // 重置表單但保持當日日期
-            document.getElementById('amountInput').value = '';
-            document.getElementById('memoInput').value = '';
-            initDate();
+        btnIncome.addEventListener('click', () => {
+            currentType = 'income';
+            btnIncome.className = "flex-1 py-2 text-sm font-medium rounded-lg bg-white text-indigo-600 shadow-xs transition-all";
+            btnExpense.className = "flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all";
+            updateCategoryOptions();
         });
 
-        function deleteRecord(id) {
-            if(confirm('確定要刪除這筆紀錄嗎？')) {
-                records = records.filter(r => r.id !== id);
-                saveAndRender();
-            }
-        }
+        btnExpense.addEventListener('click', () => {
+            currentType = 'expense';
+            btnExpense.className = "flex-1 py-2 text-sm font-medium rounded-lg bg-white text-indigo-600 shadow-xs transition-all";
+            btnIncome.className = "flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all";
+            updateCategoryOptions();
+        });
 
-        function saveAndRender() {
-            localStorage.setItem('zhaxinglou_records', JSON.stringify(records));
-            render();
-        }
-
-        // 時間區間判斷常規邏輯
-        function isSameDay(d1, d2) { return d1.toDateString() === d2.toDateString(); }
-        function isSameWeek(d1, d2) {
-            const oneDay = 24 * 60 * 60 * 1000;
-            const diff = Math.abs(d1 - d2);
-            return diff < 7 * oneDay && d1.getDay() >= d2.getDay() && d1.getFullYear() === d2.getFullYear();
-        }
-        function isSameMonth(d1, d2) { return d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear(); }
-        function isSameYear(d1, d2) { return d1.getFullYear() === d2.getFullYear(); }
-
+        // 核心計算與畫面渲染
         function render() {
-            const keyword = searchInput.value.toLowerCase();
-            const ledgerList = document.getElementById('ledgerList');
-            ledgerList.innerHTML = '';
+            localStorage.setItem('building_records', JSON.stringify(records));
 
-            let todaySum = 0, weekSum = 0, monthSum = 0, yearSum = 0, totalNet = 0;
-            const now = new Date();
+            let totalIncome = 0;
+            let totalExpense = 0;
+            let catSums = {};
 
-            // 由新到舊排序
-            const sortedRecords = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+            // 初始化所有分類金額為 0
+            [...categories.income, ...categories.expense].forEach(c => catSums[c] = 0);
 
-            sortedRecords.forEach(r => {
-                const rDate = new Date(r.date);
-                const amt = r.type === '收入' ? r.amount : -r.amount;
+            // 清空列表
+            recordList.innerHTML = '';
 
-                // 計算統計
-                if (isSameDay(now, rDate)) todaySum += amt;
-                if (isSameWeek(now, rDate)) weekSum += amt;
-                if (isSameMonth(now, rDate)) monthSum += amt;
-                if (isSameYear(now, rDate)) yearSum += amt;
+            // 逆序排列，讓最新紀錄在最上面
+            [...records].reverse().forEach((rec, index) => {
+                const actualIndex = records.length - 1 - index;
+                
+                if (rec.type === 'income') totalIncome += rec.amount;
+                if (rec.type === 'expense') totalExpense += rec.amount;
+                catSums[rec.category] += rec.amount;
+
+                // 產生紀錄外觀
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100";
+                item.innerHTML = `
+                    <div class="flex-1 min-w-0 pr-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs px-2 py-0.5 rounded-md font-medium ${rec.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${rec.category}</span>
+                            <span class="text-xs text-gray-400">${rec.date}</span>
+                        </div>
+                        <p class="text-sm font-medium text-gray-700 mt-1 truncate">${rec.remark || '無備註'}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-bold ${rec.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                            ${rec.type === 'income' ? '+' : '-'}$${rec.amount.toLocaleString()}
+                        </span>
+                        <button onclick="deleteRecord(${actualIndex})" class="text-gray-300 hover:text-red-500 p-1 text-sm">✕</button>
+                    </div>
+                `;
+                recordList.appendChild(item);
+            });
+
+            if(records.length === 0) {
+                recordList.innerHTML = `<p class="text-xs text-gray-400 text-center py-6">尚無收支明細，開始新增吧！</p>`;
+            }
+
+            // 更新上方看板
