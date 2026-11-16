@@ -29,7 +29,11 @@ button{border:none;padding:12px;border-radius:10px;cursor:pointer;font-size:15px
 <h1>💰 個人記帳</h1>
 <div class="card">
 <h3 id="formTitle">新增紀錄</h3>
-<select id="type"><option value="expense">支出</option><option value="income">收入</option></select>
+<select id="type" onchange="if(this.value==='budget')document.getElementById('category').value='其他'">
+<option value="expense">支出</option>
+<option value="income">收入</option>
+<option value="budget">本月預算</option>
+</select>
 <input id="amount" type="number" placeholder="金額">
 <select id="category"><option>飲食</option><option>交通</option><option>娛樂</option><option>購物</option><option>居家</option><option>投資</option><option>其他</option></select>
 <input id="note" placeholder="備註">
@@ -50,7 +54,7 @@ button{border:none;padding:12px;border-radius:10px;cursor:pointer;font-size:15px
 </div>
 <script>
 let editId=null,data=[],displayLimit=20,searchTimer=null;
-const PAGE_SIZE=10,dbName="ExpenseTrackerDB",storeName="expenses";
+const PAGE_SIZE=20,dbName="ExpenseTrackerDB",storeName="expenses";
 const getYearMonth=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 const currentMonthStr=getYearMonth(new Date());
 try{data=JSON.parse(localStorage.getItem("expenses")||"[]")}catch(e){data=[]}
@@ -106,20 +110,30 @@ function resetLimitAndRender(){displayLimit=PAGE_SIZE;render()}
 function loadMore(){displayLimit+=PAGE_SIZE;render()}
 function render(){
   let kw=document.getElementById("search").value.toLowerCase().trim(),sm=document.getElementById("monthFilter").value||currentMonthStr;
-  let today=0,week=0,net=0,catMap={},now=new Date();
+  let today=0,week=0,net=0,budgetTotal=0,expenseTotal=0,catMap={},now=new Date();
   data.forEach(r=>{
+    if(r.type==="budget")return;
     let d=new Date(r.date),v=r.type==="expense"?-r.amount:r.amount;
     if(d.toDateString()===now.toDateString())today+=v;
     if((now-d)/864e5<7)week+=v;
   });
   let list=data.filter(r=>(sm==="ALL"||getYearMonth(new Date(r.date))===sm)&&(!kw||(r.note&&r.note.toLowerCase().includes(kw))||(r.category&&r.category.toLowerCase().includes(kw))));
-  list.forEach(r=>{net+=(r.type==="expense"?-r.amount:r.amount);catMap[r.category]=(catMap[r.category]||0)+r.amount});
+  list.forEach(r=>{
+    if(r.type==="budget"){budgetTotal+=r.amount;return}
+    if(r.type==="expense")expenseTotal+=r.amount;
+    net+=(r.type==="expense"?-r.amount:r.amount);
+    catMap[r.category]=(catMap[r.category]||0)+r.amount;
+  });
   let vis=list.slice().reverse().slice(0,displayLimit);
-  document.getElementById("records").innerHTML=vis.map(r=>`<div class="record"><div><strong>${r.note||"未命名"}</strong></div><div>${r.category}</div><div class="money">${r.type==="income"?"🟢":"🔴"} NT$${r.amount}</div><div class="small">${new Date(r.date).toLocaleString()}</div><div class="row"><button class="edit" onclick="editRecord(${r.id})">修改</button><button class="delete" onclick="deleteRecord(${r.id})">刪除</button></div></div>`).join("")||"尚無資料";
+  document.getElementById("records").innerHTML=vis.map(r=>{
+    let icon=r.type==="income"?"🟢":(r.type==="budget"?"🔵 預算":"🔴");
+    return `<div class="record"><div><strong>${r.note||(r.type==="budget"?"本月預算":"未命名")}</strong></div><div>${r.category}</div><div class="money">${icon} NT$${r.amount}</div><div class="small">${new Date(r.date).toLocaleString()}</div><div class="row"><button class="edit" onclick="editRecord(${r.id})">修改</button><button class="delete" onclick="deleteRecord(${r.id})">刪除</button></div></div>`;
+  }).join("")||"尚無資料";
   document.getElementById("recordHeader").innerText=`紀錄列表（共 ${list.length} 筆）`;
   const btn=document.getElementById("loadMoreBtn"),rem=list.length-vis.length;
   btn.style.display=rem>0?"block":"none";if(rem>0)btn.innerText=`顯示更多（還有 ${rem} 筆）`;
-  document.getElementById("stats").innerHTML=`<div class="stat">今日：NT$ ${today}</div><div class="stat">本週：NT$ ${week}</div><div class="stat"><strong>${sm==="ALL"?"篩選總計":sm+" 結餘"}：NT$ ${net}</strong></div>`;
+  let budgetHtml=budgetTotal>0?`<div class="stat">🔵 預算：NT$ ${budgetTotal}（剩餘 <strong>NT$ ${budgetTotal-expenseTotal}</strong>）</div>`:"";
+  document.getElementById("stats").innerHTML=`<div class="stat">今日：NT$ ${today}</div><div class="stat">本週：NT$ ${week}</div><div class="stat"><strong>${sm==="ALL"?"篩選總計":sm+" 結餘"}：NT$ ${net}</strong></div>${budgetHtml}`;
   document.getElementById("categoryStats").innerHTML=Object.keys(catMap).map(k=>`<div>${k}：NT$ ${catMap[k]}</div>`).join("")||"尚無資料";
 }
 function exportCSV(){
