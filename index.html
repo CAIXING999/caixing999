@@ -50,7 +50,7 @@ button{border:none;padding:12px;border-radius:10px;cursor:pointer;font-size:15px
 </div>
 <script>
 let editId=null,data=[],displayLimit=20,searchTimer=null;
-const PAGE_SIZE=20,dbName="ExpenseTrackerDB",storeName="expenses";
+const PAGE_SIZE=10,dbName="ExpenseTrackerDB",storeName="expenses";
 const getYearMonth=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 const currentMonthStr=getYearMonth(new Date());
 try{data=JSON.parse(localStorage.getItem("expenses")||"[]")}catch(e){data=[]}
