@@ -1,206 +1,460 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>大樓收支管理手帳</title>
-    
-    <!-- iPhone PWA 全螢幕與設定 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="大樓收支手帳">
-    
-    <!-- PWA 桌面圖示 (使用 Base64 內聯圖示，免去額外上傳圖片的麻煩) -->
-    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://w3.org' viewBox='0 0 100 100' width='180' height='180'><rect width='100' height='100' rx='20' fill='%234F46E5'/><text x='50' y='60' font-family='Arial, sans-serif' font-size='40' fill='white' text-anchor='middle'>🏢</text></svg>">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>個人記帳</title>
 
-    <!-- Tailwind CSS 樣式庫 -->
-    <script src="https://jsdelivr.net"></script>
-    <style>
-        body {
-            -webkit-tap-highlight-color: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-    </style>
+<style>
+:root{
+ --bg:#f5f5f7;
+ --card:#fff;
+ --text:#111;
+ --primary:#007aff;
+ --secondary:#e5e5ea;
+ --danger:#ff3b30;
+}
+
+@media (prefers-color-scheme: dark){
+:root{
+ --bg:#000;
+ --card:#1c1c1e;
+ --text:#fff;
+ --secondary:#2c2c2e;
+}
+}
+
+body{
+ margin:0;
+ padding:16px;
+ font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+ background:var(--bg);
+ color:var(--text);
+}
+
+h1{
+ text-align:center;
+}
+
+.card{
+ background:var(--card);
+ padding:15px;
+ border-radius:12px;
+ margin-bottom:15px;
+}
+
+input,select{
+ width:100%;
+ padding:12px;
+ margin-top:8px;
+ margin-bottom:8px;
+ border-radius:8px;
+ border:1px solid #ccc;
+ box-sizing:border-box;
+ background:var(--card);
+ color:var(--text);
+}
+
+button{
+ border:none;
+ padding:12px;
+ border-radius:10px;
+ cursor:pointer;
+ font-size:15px;
+}
+
+.primary{
+ background:var(--primary);
+ color:white;
+ width:100%;
+}
+
+.load-more{
+ background:var(--secondary);
+ color:var(--text);
+ width:100%;
+ margin-top:12px;
+ font-weight:bold;
+}
+
+.edit{
+ background:#ff9500;
+ color:white;
+}
+
+.delete{
+ background:var(--danger);
+ color:white;
+}
+
+.row{
+ display:flex;
+ gap:10px;
+ flex-wrap:wrap;
+ margin-top:8px;
+}
+
+.row button{
+ flex:1;
+}
+
+.record{
+ border-top:1px solid #ddd;
+ padding:10px 0;
+}
+
+@media (prefers-color-scheme: dark){
+ .record{
+  border-top:1px solid #333;
+ }
+}
+
+.money{
+ font-size:20px;
+ font-weight:bold;
+}
+
+.stat{
+ margin:6px 0;
+}
+
+.small{
+ font-size:12px;
+ opacity:0.7;
+}
+</style>
 </head>
-<body class="bg-gray-50 text-gray-800 pb-12">
 
-    <!-- 頂部導覽列 -->
-    <header class="bg-indigo-600 text-white pt-8 pb-4 px-4 sticky top-0 shadow-md z-10">
-        <h1 class="text-xl font-bold text-center">🏢 大樓收支管理系統</h1>
-    </header>
+<body>
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
-        
-        <!-- 財務統計看板 -->
-        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">本月財務總覽</h2>
-            <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-green-50 p-3 rounded-xl">
-                    <p class="text-xs text-green-600 font-medium">總收入</p>
-                    <p id="total-income" class="text-lg font-bold text-green-700 mt-1">$0</p>
-                </div>
-                <div class="bg-red-50 p-3 rounded-xl">
-                    <p class="text-xs text-red-600 font-medium">總支出</p>
-                    <p id="total-expense" class="text-lg font-bold text-red-700 mt-1">$0</p>
-                </div>
-                <div class="bg-indigo-50 p-3 rounded-xl">
-                    <p class="text-xs text-indigo-600 font-medium">本期結存</p>
-                    <p id="balance" class="text-lg font-bold text-indigo-700 mt-1">$0</p>
-                </div>
-            </div>
-        </section>
+<h1>💰 個人記帳</h1>
 
-        <!-- 新增紀錄表單 -->
-        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-                <span>➕</span> 新增收支紀錄
-            </h2>
-            
-            <form id="tracker-form" class="space-y-4">
-                <!-- 收支類型切換 -->
-                <div class="flex bg-gray-100 p-1 rounded-xl">
-                    <button type="button" id="btn-income" class="flex-1 py-2 text-sm font-medium rounded-lg bg-white text-indigo-600 shadow-xs transition-all">收入</button>
-                    <button type="button" id="btn-expense" class="flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all">支出</button>
-                </div>
+<div class="card">
+<h3 id="formTitle">新增紀錄</h3>
 
-                <!-- 分類選擇 -->
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">項目分類</label>
-                    <select id="category" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500" required></select>
-                </div>
+<select id="type">
+<option value="expense">支出</option>
+<option value="income">收入</option>
+</select>
 
-                <!-- 金額 -->
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">金額 (TWD)</label>
-                    <input type="number" id="amount" inputmode="numeric" placeholder="請輸入金額" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500" required>
-                </div>
+<input id="amount" type="number" placeholder="金額">
 
-                <!-- 備註說明 -->
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">摘要備註 (選填)</label>
-                    <input type="text" id="remark" placeholder="例：3樓張小姐管理費、電梯維修" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
-                </div>
+<select id="category">
+<option>飲食</option>
+<option>交通</option>
+<option>娛樂</option>
+<option>購物</option>
+<option>居家</option>
+<option>投資</option>
+<option>其他</option>
+</select>
 
-                <!-- 儲存按鈕 -->
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl text-sm transition-colors shadow-xs">
-                    儲存紀錄
-                </button>
-            </form>
-        </section>
+<input id="note" placeholder="備註">
 
-        <!-- 分類統計比例 -->
-        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h2 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                <span>📊</span> 分類金額統計
-            </h2>
-            <div id="category-stats" class="space-y-3 pt-2">
-                <!-- 統計條動態插入 -->
-            </div>
-        </section>
+<button class="primary" onclick="saveRecord()">儲存</button>
+</div>
 
-        <!-- 歷史紀錄列表 -->
-        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <span>📜</span> 歷史明細明細
-                </h2>
-                <button id="btn-export" type="button" class="text-xs text-indigo-600 font-medium hover:underline">匯出明細</button>
-            </div>
-            
-            <div id="record-list" class="space-y-3 max-h-80 overflow-y-auto pr-1">
-                <!-- 紀錄列表動態插入 -->
-            </div>
-        </section>
-    </main>
+<div class="card">
+<h3>篩選與搜尋</h3>
+<select id="monthFilter" onchange="resetLimitAndRender()"></select>
+<input id="search" placeholder="輸入關鍵字（可搜備註或分類）" oninput="debouncedRender()">
+</div>
 
-    <script>
-        // 核心資料庫配置
-        const categories = {
-            income: ['管理費', '其他'],
-            expense: ['公設電費', '電梯保養費', '清潔費', '電梯代辦費', '消防申報費', '其他']
-        };
+<div class="card">
+<h3>統計</h3>
+<div id="stats"></div>
+</div>
 
-        let currentType = 'income'; // 預設為收入
-        let records = JSON.parse(localStorage.getItem('building_records')) || [];
+<div class="card">
+<h3>分類統計</h3>
+<div id="categoryStats"></div>
+</div>
 
-        // DOM 節點
-        const btnIncome = document.getElementById('btn-income');
-        const btnExpense = document.getElementById('btn-expense');
-        const categorySelect = document.getElementById('category');
-        const trackerForm = document.getElementById('tracker-form');
-        const recordList = document.getElementById('record-list');
-        const btnExport = document.getElementById('btn-export');
+<div class="card">
+<button class="primary" onclick="exportCSV()">匯出CSV</button>
+</div>
 
-        // 初始化與類別切換
-        function updateCategoryOptions() {
-            categorySelect.innerHTML = '';
-            categories[currentType].forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                categorySelect.appendChild(opt);
-            });
-        }
+<div class="card">
+<h3 id="recordHeader">紀錄列表</h3>
+<div id="records"></div>
+<button id="loadMoreBtn" class="load-more" style="display:none;" onclick="loadMore()">顯示更多</button>
+</div>
 
-        btnIncome.addEventListener('click', () => {
-            currentType = 'income';
-            btnIncome.className = "flex-1 py-2 text-sm font-medium rounded-lg bg-white text-indigo-600 shadow-xs transition-all";
-            btnExpense.className = "flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all";
-            updateCategoryOptions();
-        });
+<script>
 
-        btnExpense.addEventListener('click', () => {
-            currentType = 'expense';
-            btnExpense.className = "flex-1 py-2 text-sm font-medium rounded-lg bg-white text-indigo-600 shadow-xs transition-all";
-            btnIncome.className = "flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all";
-            updateCategoryOptions();
-        });
+let editId = null;
+let data = [];
+const PAGE_SIZE = 20;
+let displayLimit = PAGE_SIZE;
+let searchTimer = null;
 
-        // 核心計算與畫面渲染
-        function render() {
-            localStorage.setItem('building_records', JSON.stringify(records));
+// 取得 YYYY-MM 格式字串
+function getYearMonth(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
 
-            let totalIncome = 0;
-            let totalExpense = 0;
-            let catSums = {};
+const currentMonthStr = getYearMonth(new Date());
 
-            // 初始化所有分類金額為 0
-            [...categories.income, ...categories.expense].forEach(c => catSums[c] = 0);
+// ⚡ 1. 初始化 IndexedDB 資料庫
+const dbName = "ExpenseTrackerDB";
+const storeName = "expenses";
+let db;
 
-            // 清空列表
-            recordList.innerHTML = '';
+const request = indexedDB.open(dbName, 1);
 
-            // 逆序排列，讓最新紀錄在最上面
-            [...records].reverse().forEach((rec, index) => {
-                const actualIndex = records.length - 1 - index;
-                
-                if (rec.type === 'income') totalIncome += rec.amount;
-                if (rec.type === 'expense') totalExpense += rec.amount;
-                catSums[rec.category] += rec.amount;
+request.onupgradeneeded = function(e) {
+  let dbInstance = e.target.result;
+  if (!dbInstance.objectStoreNames.contains(storeName)) {
+    dbInstance.createObjectStore(storeName, { keyPath: "id" });
+  }
+};
 
-                // 產生紀錄外觀
-                const item = document.createElement('div');
-                item.className = "flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100";
-                item.innerHTML = `
-                    <div class="flex-1 min-w-0 pr-2">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs px-2 py-0.5 rounded-md font-medium ${rec.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${rec.category}</span>
-                            <span class="text-xs text-gray-400">${rec.date}</span>
-                        </div>
-                        <p class="text-sm font-medium text-gray-700 mt-1 truncate">${rec.remark || '無備註'}</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm font-bold ${rec.type === 'income' ? 'text-green-600' : 'text-red-600'}">
-                            ${rec.type === 'income' ? '+' : '-'}$${rec.amount.toLocaleString()}
-                        </span>
-                        <button onclick="deleteRecord(${actualIndex})" class="text-gray-300 hover:text-red-500 p-1 text-sm">✕</button>
-                    </div>
-                `;
-                recordList.appendChild(item);
-            });
+request.onsuccess = function(e) {
+  db = e.target.result;
+  loadDataFromDB();
+};
 
-            if(records.length === 0) {
-                recordList.innerHTML = `<p class="text-xs text-gray-400 text-center py-6">尚無收支明細，開始新增吧！</p>`;
-            }
+request.onerror = function(e) {
+  console.error("IndexedDB 開啟失敗，降級使用 LocalStorage");
+  data = JSON.parse(localStorage.getItem("expenses") || "[]");
+  updateMonthOptions();
+  render();
+};
 
-            // 更新上方看板
+// ⚡ 2. 從 IndexedDB 讀取全部資料
+function loadDataFromDB() {
+  const transaction = db.transaction([storeName], "readonly");
+  const store = transaction.objectStore(storeName);
+  const getAllRequest = store.getAll();
+
+  getAllRequest.onsuccess = function() {
+    data = getAllRequest.result || [];
+    data.sort((a, b) => a.id - b.id);
+    updateMonthOptions();
+    render();
+  };
+}
+
+// ⚡ 3. 單筆精準寫入 / 更新 IndexedDB（不再整庫清空重寫）
+function upsertDBRecord(item) {
+  try {
+    localStorage.setItem("expenses", JSON.stringify(data));
+  } catch (err) {
+    console.warn("LocalStorage 容量已滿，僅儲存於 IndexedDB");
+  }
+
+  if (!db) return;
+  const transaction = db.transaction([storeName], "readwrite");
+  const store = transaction.objectStore(storeName);
+  store.put(item);
+}
+
+// ⚡ 4. 單筆精準刪除 IndexedDB 紀錄
+function deleteDBRecord(id) {
+  try {
+    localStorage.setItem("expenses", JSON.stringify(data));
+  } catch (err) {}
+
+  if (!db) return;
+  const transaction = db.transaction([storeName], "readwrite");
+  const store = transaction.objectStore(storeName);
+  store.delete(id);
+}
+
+// ⚡ 5. 動態更新月份篩選選單
+function updateMonthOptions() {
+  const select = document.getElementById("monthFilter");
+  const prevValue = select.value || currentMonthStr;
+
+  const monthSet = new Set([currentMonthStr]);
+  data.forEach(item => {
+    monthSet.add(getYearMonth(new Date(item.date)));
+  });
+
+  // 由新到舊排序月份
+  const sortedMonths = Array.from(monthSet).sort().reverse();
+
+  let optionsHtml = `<option value="ALL">📅 全部月份</option>`;
+  sortedMonths.forEach(ym => {
+    const label = ym === currentMonthStr ? `${ym}（本月）` : ym;
+    optionsHtml += `<option value="${ym}">${label}</option>`;
+  });
+
+  select.innerHTML = optionsHtml;
+  select.value = (prevValue === "ALL" || monthSet.has(prevValue)) ? prevValue : currentMonthStr;
+}
+
+function saveRecord() {
+  let amount = parseFloat(document.getElementById("amount").value);
+
+  if (!amount) {
+    alert("請輸入金額");
+    return;
+  }
+
+  // 如果是編輯模式，保留原本的建立日期；新增模式才使用當下時間
+  let originalDate = new Date().toISOString();
+  if (editId) {
+    const existing = data.find(x => x.id === editId);
+    if (existing) originalDate = existing.date;
+  }
+
+  let item = {
+    id: editId ?? Date.now(),
+    type: document.getElementById("type").value,
+    amount,
+    category: document.getElementById("category").value,
+    note: document.getElementById("note").value,
+    date: originalDate
+  };
+
+  if (editId) {
+    data = data.map(x => x.id === editId ? item : x);
+    editId = null;
+    document.getElementById("formTitle").innerText = "新增紀錄";
+  } else {
+    data.push(item);
+  }
+
+  upsertDBRecord(item);
+  updateMonthOptions();
+
+  document.getElementById("amount").value = "";
+  document.getElementById("note").value = "";
+
+  render();
+}
+
+function editRecord(id) {
+  let r = data.find(x => x.id === id);
+  if (!r) return;
+
+  editId = id;
+  document.getElementById("formTitle").innerText = "修改紀錄";
+
+  document.getElementById("type").value = r.type;
+  document.getElementById("amount").value = r.amount;
+  document.getElementById("category").value = r.category;
+  document.getElementById("note").value = r.note;
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
+function deleteRecord(id) {
+  if (!confirm("確定刪除？")) return;
+
+  data = data.filter(x => x.id !== id);
+  deleteDBRecord(id);
+  updateMonthOptions();
+  render();
+}
+
+// 搜尋框防抖，避免打字時連續重繪
+function debouncedRender() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    displayLimit = PAGE_SIZE;
+    render();
+  }, 250);
+}
+
+function resetLimitAndRender() {
+  displayLimit = PAGE_SIZE;
+  render();
+}
+
+function loadMore() {
+  displayLimit += PAGE_SIZE;
+  render();
+}
+
+function render() {
+  let keyword = document.getElementById("search").value.toLowerCase().trim();
+  let selectedMonth = document.getElementById("monthFilter").value || currentMonthStr;
+
+  let today = 0;
+  let week = 0;
+  let selectedPeriodNet = 0;
+  let categoryMap = {};
+  let now = new Date();
+
+  // 先從全部資料計算「今日」與「本週」即時統計
+  data.forEach(r => {
+    let d = new Date(r.date);
+    let value = r.type === "expense" ? -r.amount : r.amount;
+
+    if (d.toDateString() === now.toDateString()) {
+      today += value;
+    }
+    if ((now - d) / (1000 * 60 * 60 * 24) < 7) {
+      week += value;
+    }
+  });
+
+  // 依照「月份」與「關鍵字」過濾列表
+  let filteredList = data.filter(r => {
+    let matchMonth = (selectedMonth === "ALL") || (getYearMonth(new Date(r.date)) === selectedMonth);
+    let matchKeyword = !keyword ||
+      (r.note && r.note.toLowerCase().includes(keyword)) ||
+      (r.category && r.category.toLowerCase().includes(keyword));
+    return matchMonth && matchKeyword;
+  });
+
+  // 計算篩選範圍內的總結與分類統計
+  filteredList.forEach(r => {
+    let value = r.type === "expense" ? -r.amount : r.amount;
+    selectedPeriodNet += value;
+
+    if (!categoryMap[r.category]) {
+      categoryMap[r.category] = 0;
+    }
+    categoryMap[r.category] += r.amount;
+  });
+
+  // 反轉順序（最新在最上面），並只切出前 displayLimit 筆來渲染 DOM
+  let reversedList = filteredList.slice().reverse();
+  let visibleList = reversedList.slice(0, displayLimit);
+
+  let html = "";
+  visibleList.forEach(r => {
+    html += `
+    <div class="record">
+      <div><strong>${r.note || "未命名"}</strong></div>
+      <div>${r.category}</div>
+      <div class="money">
+      ${r.type === "income" ? "🟢" : "🔴"}
+      NT$${r.amount}
+      </div>
+      <div class="small">
+      ${new Date(r.date).toLocaleString()}
+      </div>
+
+      <div class="row">
+        <button class="edit" onclick="editRecord(${r.id})">修改</button>
+        <button class="delete" onclick="deleteRecord(${r.id})">刪除</button>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById("recordHeader").innerText = `紀錄列表（共 ${filteredList.length} 筆）`;
+  document.getElementById("records").innerHTML = html || "尚無資料";
+
+  // 控制「顯示更多」按鈕的顯示與剩餘筆數提示
+  const loadMoreBtn = document.getElementById("loadMoreBtn");
+  const remaining = filteredList.length - visibleList.length;
+  if (remaining > 0) {
+    loadMoreBtn.style.display = "block";
+    loadMoreBtn.innerText = `顯示更多（還有 ${remaining} 筆）`;
+  } else {
+    loadMoreBtn.style.display = "none";
+  }
+
+  const periodLabel = selectedMonth === "ALL" ? "篩選總計" : `${selectedMonth} 結餘`;
+  document.getElementById("stats").innerHTML = `
+    <div class="stat">今日：NT$ ${today}</div>
+    <div class="stat">本週：NT$ ${week}</div>
