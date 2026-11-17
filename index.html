@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>個人記帳</title>
+<title>多人共用記帳本</title>
 <style>
 :root{--bg:#f5f5f7;--card:#fff;--text:#111;--primary:#007aff;--secondary:#e5e5ea;--danger:#ff3b30}
 @media (prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--text:#fff;--secondary:#2c2c2e}}
@@ -23,10 +23,148 @@ button{border:none;padding:12px;border-radius:10px;cursor:pointer;font-size:15px
 .money{font-size:20px;font-weight:bold}
 .stat{margin:6px 0}
 .small{font-size:12px;opacity:.7}
+.sync-status{text-align:center;font-size:13px;color:#007aff;margin-bottom:10px}
 </style>
+<!-- 引入 Firebase SDK (v10 模組化版本) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, setDoc, doc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // 使用你剛剛提供的專案設定
+  const firebaseConfig = {
+    apiKey: "AIzaSyBKzdhel0LCAXv9qoGOdVMQ_K_KhBRpdzk",
+    authDomain: "personal-account-124.firebaseapp.com",
+    projectId: "personal-account-124",
+    storageBucket: "personal-account-124.firebasestorage.app",
+    messagingSenderId: "531857933748",
+    appId: "1:531857933748:web:e7d6afe199bf507f885ee1",
+    measurementId: "G-Z9MVZ43E4J"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  let editId = null, data = [], displayLimit = 20, searchTimer = null;
+  const PAGE_SIZE = 20;
+  const getYearMonth = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  const currentMonthStr = getYearMonth(new Date());
+
+  // 即時監聽遠端資料庫變更（達到即時共同編輯效果）
+  onSnapshot(collection(db, "expenses"), (snapshot) => {
+    data = [];
+    snapshot.forEach((doc) => {
+      data.push(doc.data());
+    });
+    data.sort((a, b) => a.id - b.id);
+    updateMonthOptions();
+    render();
+    document.getElementById("syncStatus").innerText = "🟢 已與雲端同步（可多人協作）";
+  }, (error) => {
+    console.error("同步失敗：", error);
+    document.getElementById("syncStatus").innerText = "🔴 雲端連線失敗，請檢查設定";
+  });
+
+  window.updateMonthOptions = function() {
+    const sel = document.getElementById("monthFilter"), prev = sel.value || currentMonthStr, set = new Set([currentMonthStr]);
+    data.forEach(i => { if (i.date) set.add(getYearMonth(new Date(i.date))); });
+    let h = `<option value="ALL">📅 全部月份</option>`;
+    Array.from(set).sort().reverse().forEach(ym => { h += `<option value="${ym}">${ym === currentMonthStr ? ym + "（本月）" : ym}</option>`; });
+    sel.innerHTML = h; sel.value = (prev === "ALL" || set.has(prev)) ? prev : currentMonthStr;
+  }
+
+  window.saveRecord = async function() {
+    let amount = parseFloat(document.getElementById("amount").value);
+    if (!amount) return alert("請輸入金額");
+    let originalDate = new Date().toISOString();
+    if (editId) { const ex = data.find(x => x.id === editId); if (ex) originalDate = ex.date; }
+    
+    let id = editId ?? Date.now();
+    let item = {
+      id,
+      type: document.getElementById("type").value,
+      amount,
+      category: document.getElementById("category").value,
+      note: document.getElementById("note").value,
+      date: originalDate
+    };
+
+    try {
+      await setDoc(doc(db, "expenses", String(id)), item);
+      editId = null;
+      document.getElementById("formTitle").innerText = "新增紀錄";
+      document.getElementById("amount").value = "";
+      document.getElementById("note").value = "";
+    } catch (e) {
+      alert("儲存失敗：" + e.message);
+    }
+  }
+
+  window.editRecord = function(id) {
+    let r = data.find(x => x.id === id); if (!r) return;
+    editId = id; document.getElementById("formTitle").innerText = "修改紀錄";
+    document.getElementById("type").value = r.type; document.getElementById("amount").value = r.amount;
+    document.getElementById("category").value = r.category; document.getElementById("note").value = r.note;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  window.deleteRecord = async function(id) {
+    if (!confirm("確定刪除？")) return;
+    try {
+      await deleteDoc(doc(db, "expenses", String(id)));
+    } catch (e) {
+      alert("刪除失敗：" + e.message);
+    }
+  }
+
+  window.debouncedRender = function() { clearTimeout(searchTimer); searchTimer = setTimeout(() => { displayLimit = PAGE_SIZE; render(); }, 250); }
+  window.resetLimitAndRender = function() { displayLimit = PAGE_SIZE; render(); }
+  window.loadMore = function() { displayLimit += PAGE_SIZE; render(); }
+
+  window.render = function() {
+    let kw = document.getElementById("search").value.toLowerCase().trim(), sm = document.getElementById("monthFilter").value || currentMonthStr;
+    let today = 0, week = 0, net = 0, budgetTotal = 0, expenseTotal = 0, catMap = {}, now = new Date();
+    
+    data.forEach(r => {
+      if (r.type === "budget") return;
+      let d = new Date(r.date), v = r.type === "expense" ? -r.amount : r.amount;
+      if (d.toDateString() === now.toDateString()) today += v;
+      if ((now - d) / 864e5 < 7) week += v;
+    });
+
+    let list = data.filter(r => (sm === "ALL" || getYearMonth(new Date(r.date)) === sm) && (!kw || (r.note && r.note.toLowerCase().includes(kw)) || (r.category && r.category.toLowerCase().includes(kw))));
+    
+    list.forEach(r => {
+      if (r.type === "budget") { budgetTotal += r.amount; return; }
+      if (r.type === "expense") expenseTotal += r.amount;
+      net += (r.type === "expense" ? -r.amount : r.amount);
+      catMap[r.category] = (catMap[r.category] || 0) + r.amount;
+    });
+
+    let vis = list.slice().reverse().slice(0, displayLimit);
+    document.getElementById("records").innerHTML = vis.map(r => {
+      let icon = r.type === "income" ? "🟢" : (r.type === "budget" ? "🔵 預算" : "🔴");
+      return `<div class="record"><div><strong>${r.note || (r.type === "budget" ? "本月預算" : "未命名")}</strong></div><div>${r.category}</div><div class="money">${icon} NT$${r.amount}</div><div class="small">${new Date(r.date).toLocaleString()}</div><div class="row"><button class="edit" onclick="editRecord(${r.id})">修改</button><button class="delete" onclick="deleteRecord(${r.id})">刪除</button></div></div>`;
+    }).join("") || "尚無資料";
+
+    document.getElementById("recordHeader").innerText = `紀錄列表（共 ${list.length} 筆）`;
+    const btn = document.getElementById("loadMoreBtn"), rem = list.length - vis.length;
+    btn.style.display = rem > 0 ? "block" : "none"; if (rem > 0) btn.innerText = `顯示更多（還有 ${rem} 筆）`;
+    
+    let budgetHtml = budgetTotal > 0 ? `<div class="stat">🔵 預算：NT$ ${budgetTotal}（剩餘 <strong>NT$ ${budgetTotal - expenseTotal}</strong>）</div>` : "";
+    document.getElementById("stats").innerHTML = `<div class="stat">今日：NT$ ${today}</div><div class="stat">本週：NT$ ${week}</div><div class="stat"><strong>${sm === "ALL" ? "篩選總計" : sm + " 結餘"}：NT$ ${net}</strong></div>${budgetHtml}`;
+    document.getElementById("categoryStats").innerHTML = Object.keys(catMap).map(k => `<div>${k}：NT$ ${catMap[k]}</div>`).join("") || "尚無資料";
+  }
+
+  window.exportCSV = function() {
+    let csv = "\uFEFF類型,金額,分類,備註,日期\n" + data.map(r => `${r.type},${r.amount},${r.category},"${(r.note || "").replace(/"/g, '""')}",${r.date}`).join("\n");
+    let a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" })); a.download = "expense-data.csv"; a.click();
+  }
+</script>
 </head>
 <body>
-<h1>💰 個人記帳</h1>
+<h1>💰 個人記帳（共用版）</h1>
+<div id="syncStatus" class="sync-status">🔄 連線同步中...</div>
+
 <div class="card">
 <h3 id="formTitle">新增紀錄</h3>
 <select id="type" onchange="if(this.value==='budget')document.getElementById('category').value='其他'">
@@ -39,108 +177,22 @@ button{border:none;padding:12px;border-radius:10px;cursor:pointer;font-size:15px
 <input id="note" placeholder="備註">
 <button class="primary" onclick="saveRecord()">儲存</button>
 </div>
+
 <div class="card">
 <h3>篩選與搜尋</h3>
 <select id="monthFilter" onchange="resetLimitAndRender()"></select>
 <input id="search" placeholder="輸入關鍵字（可搜備註或分類）" oninput="debouncedRender()">
 </div>
+
 <div class="card"><h3>統計</h3><div id="stats"></div></div>
 <div class="card"><h3>分類統計</h3><div id="categoryStats"></div></div>
 <div class="card"><button class="primary" onclick="exportCSV()">匯出CSV</button></div>
+
 <div class="card">
 <h3 id="recordHeader">紀錄列表</h3>
 <div id="records"></div>
 <button id="loadMoreBtn" class="load-more" style="display:none" onclick="loadMore()">顯示更多</button>
 </div>
-<script>
-let editId=null,data=[],displayLimit=20,searchTimer=null;
-const PAGE_SIZE=20,dbName="ExpenseTrackerDB",storeName="expenses";
-const getYearMonth=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-const currentMonthStr=getYearMonth(new Date());
-try{data=JSON.parse(localStorage.getItem("expenses")||"[]")}catch(e){data=[]}
-let db=null;
-const req=indexedDB.open(dbName,1);
-req.onupgradeneeded=e=>{let d=e.target.result;if(!d.objectStoreNames.contains(storeName))d.createObjectStore(storeName,{keyPath:"id"})};
-req.onsuccess=e=>{db=e.target.result;loadDataFromDB()};
-req.onerror=()=>{updateMonthOptions();render()};
-function loadDataFromDB(){
-  try{
-    const s=db.transaction([storeName],"readonly").objectStore(storeName).getAll();
-    s.onsuccess=()=>{if(s.result&&s.result.length>0)data=s.result;data.sort((a,b)=>a.id-b.id);updateMonthOptions();render()};
-  }catch(e){updateMonthOptions();render()}
-}
-function upsertDBRecord(item){
-  try{localStorage.setItem("expenses",JSON.stringify(data))}catch(e){}
-  if(db)try{db.transaction([storeName],"readwrite").objectStore(storeName).put(item)}catch(e){}
-}
-function deleteDBRecord(id){
-  try{localStorage.setItem("expenses",JSON.stringify(data))}catch(e){}
-  if(db)try{db.transaction([storeName],"readwrite").objectStore(storeName).delete(id)}catch(e){}
-}
-function updateMonthOptions(){
-  const sel=document.getElementById("monthFilter"),prev=sel.value||currentMonthStr,set=new Set([currentMonthStr]);
-  data.forEach(i=>{if(i.date)set.add(getYearMonth(new Date(i.date)))});
-  let h=`<option value="ALL">📅 全部月份</option>`;
-  Array.from(set).sort().reverse().forEach(ym=>{h+=`<option value="${ym}">${ym===currentMonthStr?ym+"（本月）":ym}</option>`});
-  sel.innerHTML=h;sel.value=(prev==="ALL"||set.has(prev))?prev:currentMonthStr;
-}
-function saveRecord(){
-  let amount=parseFloat(document.getElementById("amount").value);
-  if(!amount)return alert("請輸入金額");
-  let originalDate=new Date().toISOString();
-  if(editId){const ex=data.find(x=>x.id===editId);if(ex)originalDate=ex.date}
-  let item={id:editId??Date.now(),type:document.getElementById("type").value,amount,category:document.getElementById("category").value,note:document.getElementById("note").value,date:originalDate};
-  if(editId){data=data.map(x=>x.id===editId?item:x);editId=null;document.getElementById("formTitle").innerText="新增紀錄"}else{data.push(item)}
-  upsertDBRecord(item);updateMonthOptions();
-  document.getElementById("amount").value="";document.getElementById("note").value="";render();
-}
-function editRecord(id){
-  let r=data.find(x=>x.id===id);if(!r)return;
-  editId=id;document.getElementById("formTitle").innerText="修改紀錄";
-  document.getElementById("type").value=r.type;document.getElementById("amount").value=r.amount;
-  document.getElementById("category").value=r.category;document.getElementById("note").value=r.note;
-  window.scrollTo({top:0,behavior:"smooth"});
-}
-function deleteRecord(id){
-  if(!confirm("確定刪除？"))return;
-  data=data.filter(x=>x.id!==id);deleteDBRecord(id);updateMonthOptions();render();
-}
-function debouncedRender(){clearTimeout(searchTimer);searchTimer=setTimeout(()=>{displayLimit=PAGE_SIZE;render()},250)}
-function resetLimitAndRender(){displayLimit=PAGE_SIZE;render()}
-function loadMore(){displayLimit+=PAGE_SIZE;render()}
-function render(){
-  let kw=document.getElementById("search").value.toLowerCase().trim(),sm=document.getElementById("monthFilter").value||currentMonthStr;
-  let today=0,week=0,net=0,budgetTotal=0,expenseTotal=0,catMap={},now=new Date();
-  data.forEach(r=>{
-    if(r.type==="budget")return;
-    let d=new Date(r.date),v=r.type==="expense"?-r.amount:r.amount;
-    if(d.toDateString()===now.toDateString())today+=v;
-    if((now-d)/864e5<7)week+=v;
-  });
-  let list=data.filter(r=>(sm==="ALL"||getYearMonth(new Date(r.date))===sm)&&(!kw||(r.note&&r.note.toLowerCase().includes(kw))||(r.category&&r.category.toLowerCase().includes(kw))));
-  list.forEach(r=>{
-    if(r.type==="budget"){budgetTotal+=r.amount;return}
-    if(r.type==="expense")expenseTotal+=r.amount;
-    net+=(r.type==="expense"?-r.amount:r.amount);
-    catMap[r.category]=(catMap[r.category]||0)+r.amount;
-  });
-  let vis=list.slice().reverse().slice(0,displayLimit);
-  document.getElementById("records").innerHTML=vis.map(r=>{
-    let icon=r.type==="income"?"🟢":(r.type==="budget"?"🔵 預算":"🔴");
-    return `<div class="record"><div><strong>${r.note||(r.type==="budget"?"本月預算":"未命名")}</strong></div><div>${r.category}</div><div class="money">${icon} NT$${r.amount}</div><div class="small">${new Date(r.date).toLocaleString()}</div><div class="row"><button class="edit" onclick="editRecord(${r.id})">修改</button><button class="delete" onclick="deleteRecord(${r.id})">刪除</button></div></div>`;
-  }).join("")||"尚無資料";
-  document.getElementById("recordHeader").innerText=`紀錄列表（共 ${list.length} 筆）`;
-  const btn=document.getElementById("loadMoreBtn"),rem=list.length-vis.length;
-  btn.style.display=rem>0?"block":"none";if(rem>0)btn.innerText=`顯示更多（還有 ${rem} 筆）`;
-  let budgetHtml=budgetTotal>0?`<div class="stat">🔵 預算：NT$ ${budgetTotal}（剩餘 <strong>NT$ ${budgetTotal-expenseTotal}</strong>）</div>`:"";
-  document.getElementById("stats").innerHTML=`<div class="stat">今日：NT$ ${today}</div><div class="stat">本週：NT$ ${week}</div><div class="stat"><strong>${sm==="ALL"?"篩選總計":sm+" 結餘"}：NT$ ${net}</strong></div>${budgetHtml}`;
-  document.getElementById("categoryStats").innerHTML=Object.keys(catMap).map(k=>`<div>${k}：NT$ ${catMap[k]}</div>`).join("")||"尚無資料";
-}
-function exportCSV(){
-  let csv="\uFEFF類型,金額,分類,備註,日期\n"+data.map(r=>`${r.type},${r.amount},${r.category},"${(r.note||"").replace(/"/g,'""')}",${r.date}`).join("\n");
-  let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download="expense-data.csv";a.click();
-}
-updateMonthOptions();render();
-</script>
+
 </body>
 </html>
